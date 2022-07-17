@@ -1,1 +1,68 @@
+#注：このセクションでは、アプリケーションプロジェクトディレクトリが
+#/ opt / bitnami / projects/APPNAMEにあることを前提としています。
+#APPNAMEプレースホルダーをmyappなどのアプリケーション名に置き換えることを忘れないでください。
 
+#まず、Laravelインストーラーツールをインストールして、PATHで利用できるようにします。次のコマンドを実行します。
+
+composer global require laravel/installer
+echo 'PATH=$PATH:$HOME/.config/composer/vendor/bin' | sudo tee -a /etc/profile
+export PATH=PATH=$PATH:$HOME/.config/composer/vendor/bin
+
+#アプリケーションを保存するプロジェクトディレクトリを作成します。次のコマンドを実行します。
+
+sudo mkdir -p /opt/bitnami/projects
+sudo chown $USER /opt/bitnami/projects
+
+#Laravelプロジェクトを作成します。
+cd /opt/bitnami/projects
+#test-laravel3という名前にします
+laravel new test-laravel3
+
+#Webサーバーの書き込み権限をストレージディレクトリに付与します。次のコマンドを実行します。
+#sudo chown daemon:daemon /opt/bitnami/projects/APPNAME/storage
+sudo chown daemon:daemon /opt/bitnami/projects/test-laravel3/storage
+
+#アプリケーションのApache構成を作成します。次の手順を実行します：
+#以下に示す構成ブロックを使用して、アプリケーションのHTTP仮想ホスト構成を含む
+#/opt/bitnami/apache2/conf/vhosts/APPNAME-vhost.confファイルを作成します。
+
+vi /opt/bitnami/apache2/conf/vhosts/test-laravel3-vhost.con
+
+----------------------------------------------------------------
+  <VirtualHost 127.0.0.1:80 _default_:80>
+    ServerAlias *
+    DocumentRoot /opt/bitnami/projects/test-laravel3/public
+    <Directory "/opt/bitnami/projects/test-laravel3/public">
+      Options -Indexes +FollowSymLinks -MultiViews
+      AllowOverride All
+      Require all granted
+    </Directory>
+  </VirtualHost>
+  ----------------------------------------------------------------
+# 以下に示す構成ブロックを使用して、アプリケーションのHTTPS仮想ホスト構成を含む
+#  /opt/bitnami/apache2/conf/vhosts/APPNAME-https-vhost.confファイルを作成します。
+vi /opt/bitnami/apache2/conf/vhosts/test-laravel3-https-vhost.conf
+
+  ----------------------------------------------------------------
+ <VirtualHost 127.0.0.1:443 _default_:443>
+    ServerAlias *
+    DocumentRoot /opt/bitnami/projects/test-laravel3/public
+    SSLEngine on
+    SSLCertificateFile "/opt/bitnami/apache2/conf/bitnami/certs/server.crt"
+    SSLCertificateKeyFile "/opt/bitnami/apache2/conf/bitnami/certs/server.key"
+    <Directory "/opt/bitnami/projects/test-laravel3/public">
+      Options -Indexes +FollowSymLinks -MultiViews
+      AllowOverride All
+      Require all granted
+    </Directory>
+  </VirtualHost>
+   ------------------------------------------------------------------
+# 最後に、Apacheサーバーを再起動します。
+sudo /opt/bitnami/ctlscript.sh restart apache
+# ※動かないとき
+#パーミッション、ファイル所有者に権限がなくてエラーになる場合があります。
+#所有者を、PHP実行グループに入れてあげればよいので、Laravelインストールディレクトリに対して所有者グループを変更します。
+#インストールディレクトリ全体に対して所有者変更。
+
+$ cd /opt/bitnami/apache2/htdocs
+$ sudo chown -R bitnami:daemon laravel/*
